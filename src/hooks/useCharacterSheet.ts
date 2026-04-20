@@ -486,6 +486,16 @@ export function useCharacterSheet() {
     } catch { /* ignore */ }
   }, []);
 
+  // Full replacement — used when loading a character from Nostr
+  const replaceChar = useCallback((incoming: CharacterData) => {
+    // Merge over defaults so any missing fields in the saved data get filled in
+    const full = { ...defaultCharacter, ...incoming };
+    setChar(full);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(full));
+    } catch { /* ignore */ }
+  }, []);
+
   // Convenience updater for array fields
   const updateArrayField = useCallback(<K extends keyof CharacterData>(
     field: K,
@@ -657,6 +667,7 @@ export function useCharacterSheet() {
     char,
     update,
     resetToNew,
+    replaceChar,
     updateArrayField,
     updateWeapon,
     updatePotion,

@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useCharacterSheet } from '@/hooks/useCharacterSheet';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostrCharacters } from '@/hooks/useNostrCharacters';
-import { useNostrLogin } from '@nostrify/react/login';
+import { useLoginActions } from '@/hooks/useLoginActions';
 import { CharacterTab } from './CharacterTab';
 import { CombatTab } from './CombatTab';
 import { AbilitiesTab } from './AbilitiesTab';
@@ -43,19 +43,20 @@ export function CharacterSheet() {
   const menuRef = useRef<HTMLDivElement>(null);
 
   const { user } = useCurrentUser();
-  const { logins, removeLogin } = useNostrLogin();
+  const login = useLoginActions();
   const { saveCharacter } = useNostrCharacters();
 
   const {
     char,
     update,
+    replaceChar,
+    resetToNew,
     updateWeapon,
     updatePotion,
     updateGear,
     updateProficiency,
     updateSpecialAbility,
     updateSpell,
-    resetToNew,
     setMovementFromBase,
     autoFillAbility,
     gearTotalWeight,
@@ -92,9 +93,7 @@ export function CharacterSheet() {
   function handleLogout() {
     setMenuOpen(false);
     if (!confirm('Log out of Nostr?')) return;
-    // removeLogin takes the login id (not pubkey)
-    const login = logins[0];
-    if (login) removeLogin(login.id);
+    login.logout();
   }
 
   function handleSignIn() {
@@ -120,10 +119,10 @@ export function CharacterSheet() {
   }
 
   const handleNostrLoad = useCallback((loadedChar: CharacterData, nostrId: string) => {
-    update(loadedChar);
+    replaceChar(loadedChar);
     setCurrentNostrId(nostrId);
     setSaveStatus('idle');
-  }, [update]);
+  }, [replaceChar]);
 
   const handleNostrSaved = useCallback((nostrId: string) => {
     setCurrentNostrId(nostrId);

@@ -50,7 +50,8 @@ export function useNostrCharacters() {
   const indexQuery = useQuery({
     queryKey: ['nostr-char-index', user?.pubkey],
     enabled: isLoggedIn,
-    staleTime: 30_000,
+    staleTime: 0, // Always refetch when the drawer opens / pubkey changes
+    gcTime: 0,    // Don't cache stale index across logins
     queryFn: async (): Promise<CharacterMeta[]> => {
       if (!user) return [];
 
@@ -68,14 +69,10 @@ export function useNostrCharacters() {
       const event = events[0];
       if (!event.content) return [];
 
-      try {
-        if (!user.signer.nip44) throw new Error('NIP-44 not supported');
-        const decrypted = await user.signer.nip44.decrypt(user.pubkey, event.content);
-        const parsed = JSON.parse(decrypted) as CharacterMeta[];
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
+      if (!user.signer.nip44) throw new Error('NIP-44 not supported by this signer');
+      const decrypted = await user.signer.nip44.decrypt(user.pubkey, event.content);
+      const parsed = JSON.parse(decrypted) as CharacterMeta[];
+      return Array.isArray(parsed) ? parsed : [];
     },
   });
 
