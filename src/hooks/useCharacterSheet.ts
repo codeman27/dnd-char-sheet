@@ -572,17 +572,43 @@ export function useCharacterSheet() {
     link.remove();
   }, [char]);
 
-  const loadFromFile = useCallback((file: File) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      try {
-        const parsed = JSON.parse(reader.result as string) as Partial<CharacterData>;
-        const loaded = { ...defaultCharacter, ...parsed };
-        setChar(loaded);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(loaded));
-      } catch { /* ignore */ }
-    };
-    reader.readAsText(file);
+  const loadFromFile = useCallback((file: File): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        try {
+          const raw = reader.result as string;
+          if (!raw || !raw.trim()) {
+            reject(new Error('File is empty'));
+            return;
+          }
+          const parsed = JSON.parse(raw);
+
+          // Support both the new React format (version 4, flat fields)
+          // and the old vanilla-JS format (version 1-3, nested `data` object)
+          let loaded: CharacterData;
+          if (parsed.version <= 3 && parsed.data) {
+            // Old format — just load defaults; fields won't map across
+            // but at least don't crash. The user will see a blank sheet.
+            loaded = { ...defaultCharacter };
+          } else {
+            // New React format: top-level fields match CharacterData
+            // Strip the version key before merging
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { version: _v, ...fields } = parsed as { version?: number } & Partial<CharacterData>;
+            loaded = { ...defaultCharacter, ...fields };
+          }
+
+          setChar(loaded);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(loaded));
+          resolve();
+        } catch (err) {
+          reject(err instanceof Error ? err : new Error('Failed to parse character file'));
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsText(file);
+    });
   }, []);
 
   const setMovementFromBase = useCallback((base: string) => {

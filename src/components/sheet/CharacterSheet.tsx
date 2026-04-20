@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useCharacterSheet } from '@/hooks/useCharacterSheet';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { CharacterTab } from './CharacterTab';
@@ -32,6 +32,7 @@ export function CharacterSheet() {
   const [nostrDrawerOpen, setNostrDrawerOpen] = useState(false);
   // Track which Nostr character ID is currently loaded (null = local only)
   const [currentNostrId, setCurrentNostrId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadRef = useRef<HTMLInputElement>(null);
   const { user } = useCurrentUser();
@@ -52,14 +53,18 @@ export function CharacterSheet() {
     gearTotalWeight,
   } = useCharacterSheet();
 
-  function handleLoadFile(e: React.ChangeEvent<HTMLInputElement>) {
+  const handleLoadFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      loadFromFile(file);
-      setCurrentNostrId(null); // loaded from file, not Nostr
+    e.target.value = ''; // reset immediately so the same file can be re-selected
+    if (!file) return;
+    setLoadError(null);
+    try {
+      await loadFromFile(file);
+      setCurrentNostrId(null);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Failed to load file');
     }
-    e.target.value = '';
-  }
+  }, [loadFromFile]);
 
   function handleFontChange(font: string) {
     update({ font });
@@ -96,12 +101,16 @@ export function CharacterSheet() {
       style={{ background: 'var(--adnd-content-bg)' }}
       onDragEnter={e => e.preventDefault()}
       onDragOver={e => e.preventDefault()}
-      onDrop={e => {
+      onDrop={async e => {
         e.preventDefault();
         const file = e.dataTransfer.files[0];
-        if (file) {
-          loadFromFile(file);
+        if (!file) return;
+        setLoadError(null);
+        try {
+          await loadFromFile(file);
           setCurrentNostrId(null);
+        } catch (err) {
+          setLoadError(err instanceof Error ? err.message : 'Failed to load file');
         }
       }}
     >
@@ -130,8 +139,18 @@ export function CharacterSheet() {
           >
             {charName}
           </span>
+          {/* Load error */}
+          {loadError && (
+            <span
+              className="font-handwriting text-[10px] text-red-400 block truncate cursor-pointer"
+              onClick={() => setLoadError(null)}
+              title="Click to dismiss"
+            >
+              ⚠ {loadError}
+            </span>
+          )}
           {/* Show Nostr sync indicator if linked */}
-          {currentNostrId && (
+          {!loadError && currentNostrId && (
             <span className="font-cinzel text-[8px] uppercase tracking-widest block" style={{ color: 'var(--adnd-gold-dim)' }}>
               ⚡ nostr synced
             </span>
