@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useCharacterSheet } from '@/hooks/useCharacterSheet';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { CharacterTab } from './CharacterTab';
 import { CombatTab } from './CombatTab';
 import { AbilitiesTab } from './AbilitiesTab';
@@ -7,6 +8,8 @@ import { SkillsTab } from './SkillsTab';
 import { MagicTab } from './MagicTab';
 import { GearTab } from './GearTab';
 import { NotesTab } from './NotesTab';
+import { NostrCharacterDrawer } from './NostrCharacterDrawer';
+import type { CharacterData } from '@/hooks/useCharacterSheet';
 
 const ADND_LOGO = 'https://blossom.dreamith.to/fe0fefc0b412417d9ac70cf118aa60c6001422f1e83318964fc77d4aec416ff8.png';
 
@@ -26,7 +29,12 @@ const FONTS = ['Default', 'Garamond', 'Raleway'];
 
 export function CharacterSheet() {
   const [activeTab, setActiveTab] = useState<TabId>('character');
+  const [nostrDrawerOpen, setNostrDrawerOpen] = useState(false);
+  // Track which Nostr character ID is currently loaded (null = local only)
+  const [currentNostrId, setCurrentNostrId] = useState<string | null>(null);
+
   const loadRef = useRef<HTMLInputElement>(null);
+  const { user } = useCurrentUser();
 
   const {
     char,
@@ -46,7 +54,10 @@ export function CharacterSheet() {
 
   function handleLoadFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) loadFromFile(file);
+    if (file) {
+      loadFromFile(file);
+      setCurrentNostrId(null); // loaded from file, not Nostr
+    }
     e.target.value = '';
   }
 
@@ -64,7 +75,20 @@ export function CharacterSheet() {
     update({ pencilColour: colour });
   }
 
+  // Called when a Nostr character is loaded via the drawer
+  function handleNostrLoad(loadedChar: CharacterData, nostrId: string) {
+    // Manually populate the character sheet state
+    update(loadedChar);
+    setCurrentNostrId(nostrId);
+  }
+
+  // Called after a successful save to Nostr
+  function handleNostrSaved(nostrId: string) {
+    setCurrentNostrId(nostrId);
+  }
+
   const charName = char.name.trim() || 'New Character';
+  const isLoggedIn = !!user;
 
   return (
     <div
@@ -75,7 +99,10 @@ export function CharacterSheet() {
       onDrop={e => {
         e.preventDefault();
         const file = e.dataTransfer.files[0];
-        if (file) loadFromFile(file);
+        if (file) {
+          loadFromFile(file);
+          setCurrentNostrId(null);
+        }
       }}
     >
       {/* ── Top Header ── */}
@@ -103,27 +130,48 @@ export function CharacterSheet() {
           >
             {charName}
           </span>
+          {/* Show Nostr sync indicator if linked */}
+          {currentNostrId && (
+            <span className="font-cinzel text-[8px] uppercase tracking-widest block" style={{ color: 'var(--adnd-gold-dim)' }}>
+              ⚡ nostr synced
+            </span>
+          )}
         </div>
 
         {/* Action buttons */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Save */}
+          {/* Nostr Cloud button — always visible, shows login prompt if not logged in */}
+          <button
+            className="flex items-center gap-1 px-2 py-1.5 rounded text-xs font-cinzel border transition-all"
+            style={{
+              background: isLoggedIn ? 'rgba(201,162,39,0.15)' : 'var(--adnd-dark3)',
+              color: isLoggedIn ? 'var(--adnd-gold)' : '#8a9ab8',
+              border: isLoggedIn ? '1px solid var(--adnd-gold-dim)' : '1px solid #3a4060',
+            }}
+            onClick={() => setNostrDrawerOpen(true)}
+            title={isLoggedIn ? 'Nostr cloud sync' : 'Sign in with Nostr to sync characters'}
+          >
+            <span>⚡</span>
+            <span className="hidden sm:inline">{isLoggedIn ? 'Nostr' : 'Sign in'}</span>
+          </button>
+
+          {/* Local Save (JSON) */}
           <button
             className="flex items-center gap-1 px-2 py-1.5 rounded text-xs font-cinzel border transition-colors"
             style={{ background: 'var(--adnd-dark3)', color: 'var(--adnd-gold-light)', border: '1px solid var(--adnd-gold-dim)' }}
             onClick={saveToFile}
-            title="Save character (Ctrl+S)"
+            title="Save character as JSON file (Ctrl+S)"
           >
             💾
             <span className="hidden sm:inline">Save</span>
           </button>
 
-          {/* Load */}
+          {/* Local Load (JSON) */}
           <button
             className="flex items-center gap-1 px-2 py-1.5 rounded text-xs font-cinzel border transition-colors"
             style={{ background: 'var(--adnd-dark3)', color: 'var(--adnd-gold-light)', border: '1px solid var(--adnd-gold-dim)' }}
             onClick={() => loadRef.current?.click()}
-            title="Load character"
+            title="Load character from JSON file"
           >
             📂
             <span className="hidden sm:inline">Load</span>
@@ -151,7 +199,7 @@ export function CharacterSheet() {
             />
           </label>
 
-          {/* Font selector */}
+          {/* Font selector — hidden on smallest screens */}
           <select
             className="px-1.5 py-1.5 rounded text-xs font-cinzel border hidden sm:block"
             style={{ background: 'var(--adnd-dark3)', color: 'var(--adnd-gold-light)', border: '1px solid var(--adnd-gold-dim)' }}
@@ -222,6 +270,16 @@ export function CharacterSheet() {
           </button>
         ))}
       </nav>
+
+      {/* ── Nostr Character Drawer ── */}
+      <NostrCharacterDrawer
+        isOpen={nostrDrawerOpen}
+        onClose={() => setNostrDrawerOpen(false)}
+        currentChar={char}
+        currentNostrId={currentNostrId}
+        onLoad={handleNostrLoad}
+        onSaved={handleNostrSaved}
+      />
     </div>
   );
 }
