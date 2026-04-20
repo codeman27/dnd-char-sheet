@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useCharacterSheet } from '@/hooks/useCharacterSheet';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useNostrCharacters } from '@/hooks/useNostrCharacters';
 import { CharacterTab } from './CharacterTab';
 import { CombatTab } from './CombatTab';
 import { AbilitiesTab } from './AbilitiesTab';
@@ -25,14 +26,20 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'notes', label: 'Notes', icon: '📝' },
 ];
 
-const FONTS = ['Default', 'Garamond', 'Raleway'];
+const BTN_BASE = {
+  background: 'var(--adnd-dark3)',
+  color: 'var(--adnd-gold-light)',
+  border: '1px solid var(--adnd-gold-dim)',
+} as const;
 
 export function CharacterSheet() {
   const [activeTab, setActiveTab] = useState<TabId>('character');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [currentNostrId, setCurrentNostrId] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
 
   const { user } = useCurrentUser();
+  const { saveCharacter } = useNostrCharacters();
 
   const {
     char,
@@ -49,42 +56,63 @@ export function CharacterSheet() {
     gearTotalWeight,
   } = useCharacterSheet();
 
-  function handleFontChange(font: string) {
-    update({ font });
-    const fontMap: Record<string, string> = {
-      'Default': "'Indie Flower', cursive",
-      'Garamond': "'EB Garamond', serif",
-      'Raleway': "'Raleway', sans-serif",
-    };
-    document.documentElement.style.setProperty('--sheet-font', fontMap[font] || fontMap['Default']);
-  }
-
-  function handleColourChange(colour: string) {
-    update({ pencilColour: colour });
-  }
-
   function handleNew() {
-    if (char.name.trim() || Object.values(char).some(v => typeof v === 'string' && v.trim())) {
+    if (char.name.trim()) {
       if (!confirm('Start a new character? Unsaved changes will be lost.')) return;
     }
     resetToNew();
     setCurrentNostrId(null);
     setActiveTab('character');
+    setSaveStatus('idle');
+  }
+
+  async function handleSave() {
+    if (!user) {
+      // Not logged in — open the drawer so they can sign in
+      setDrawerOpen(true);
+      return;
+    }
+    setSaveStatus('saving');
+    try {
+      const id = await saveCharacter({ char, existingId: currentNostrId ?? undefined });
+      setCurrentNostrId(id);
+      setSaveStatus('success');
+      setTimeout(() => setSaveStatus('idle'), 2500);
+    } catch {
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    }
   }
 
   // Called when a Nostr character is loaded via the drawer
   const handleNostrLoad = useCallback((loadedChar: CharacterData, nostrId: string) => {
     update(loadedChar);
     setCurrentNostrId(nostrId);
+    setSaveStatus('idle');
   }, [update]);
 
-  // Called after a successful save to Nostr
+  // Called after a save triggered inside the drawer
   const handleNostrSaved = useCallback((nostrId: string) => {
     setCurrentNostrId(nostrId);
   }, []);
 
   const charName = char.name.trim() || 'New Character';
   const isLoggedIn = !!user;
+
+  // Save button appearance
+  const saveStyle = saveStatus === 'success'
+    ? { background: '#1a4a1a', color: '#6fc86f', border: '1px solid #2a6a2a' }
+    : saveStatus === 'error'
+    ? { background: '#4a1a1a', color: '#f08080', border: '1px solid #6a2a2a' }
+    : saveStatus === 'saving'
+    ? { ...BTN_BASE, opacity: 0.7 }
+    : BTN_BASE;
+
+  const saveLabel =
+    saveStatus === 'saving' ? '…' :
+    saveStatus === 'success' ? '✓' :
+    saveStatus === 'error' ? '!' :
+    'Save';
 
   return (
     <div className="flex flex-col h-screen" style={{ background: 'var(--adnd-content-bg)' }}>
@@ -106,7 +134,7 @@ export function CharacterSheet() {
         />
 
         {/* Character name — center */}
-        <div className="flex-1 text-center min-w-0 overflow-hidden">
+        <div className="flex-1 text-center min-w-0 overflow-hidden px-1">
           <span
             className="font-cinzel text-base truncate block"
             style={{ color: 'var(--adnd-gold-light)', letterSpacing: '1px' }}
@@ -115,63 +143,44 @@ export function CharacterSheet() {
           </span>
           {currentNostrId && (
             <span className="font-cinzel text-[8px] uppercase tracking-widest block" style={{ color: 'var(--adnd-gold-dim)' }}>
-              ⚡ nostr synced
+              ⚡ synced
             </span>
           )}
         </div>
 
-        {/* Action buttons */}
+        {/* Action buttons: New · Load · Save */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* New */}
           <button
-            className="flex items-center gap-1 px-2 py-1.5 rounded text-xs font-cinzel border transition-colors"
-            style={{ background: 'var(--adnd-dark3)', color: 'var(--adnd-gold-light)', border: '1px solid var(--adnd-gold-dim)' }}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-cinzel border transition-colors"
+            style={BTN_BASE}
             onClick={handleNew}
             title="New character"
           >
-            ✦
-            <span className="hidden sm:inline">New</span>
+            New
           </button>
 
-          {/* Load — opens drawer */}
           <button
-            className="flex items-center gap-1 px-2 py-1.5 rounded text-xs font-cinzel border transition-all"
-            style={{
-              background: isLoggedIn ? 'rgba(201,162,39,0.15)' : 'var(--adnd-dark3)',
-              color: isLoggedIn ? 'var(--adnd-gold)' : '#8a9ab8',
-              border: isLoggedIn ? '1px solid var(--adnd-gold-dim)' : '1px solid #3a4060',
-            }}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-cinzel border transition-all"
+            style={
+              isLoggedIn
+                ? { background: 'rgba(201,162,39,0.15)', color: 'var(--adnd-gold)', border: '1px solid var(--adnd-gold-dim)' }
+                : BTN_BASE
+            }
             onClick={() => setDrawerOpen(true)}
-            title="Load or save characters"
+            title="Load a character"
           >
-            📜
-            <span className="hidden sm:inline">Load</span>
+            Load
           </button>
 
-          {/* Pencil colour */}
-          <label
-            className="flex items-center gap-1 px-2 py-1.5 rounded text-xs font-cinzel border cursor-pointer transition-colors relative"
-            style={{ background: 'var(--adnd-dark3)', color: 'var(--adnd-gold-light)', border: '1px solid var(--adnd-gold-dim)' }}
-            title="Pencil colour"
+          <button
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-cinzel border transition-all"
+            style={saveStyle}
+            onClick={handleSave}
+            disabled={saveStatus === 'saving'}
+            title={isLoggedIn ? 'Save to Nostr' : 'Sign in to save'}
           >
-            ✏️
-            <input
-              type="color"
-              className="absolute opacity-0 w-0 h-0"
-              value={char.pencilColour || '#1a1d2e'}
-              onChange={e => handleColourChange(e.target.value)}
-            />
-          </label>
-
-          {/* Font selector — hidden on smallest screens */}
-          <select
-            className="px-1.5 py-1.5 rounded text-xs font-cinzel border hidden sm:block"
-            style={{ background: 'var(--adnd-dark3)', color: 'var(--adnd-gold-light)', border: '1px solid var(--adnd-gold-dim)' }}
-            value={char.font}
-            onChange={e => handleFontChange(e.target.value)}
-          >
-            {FONTS.map(f => <option key={f}>{f}</option>)}
-          </select>
+            {saveLabel}
+          </button>
         </div>
       </header>
 
