@@ -478,6 +478,14 @@ export function useCharacterSheet() {
     });
   }, []);
 
+  const resetToNew = useCallback(() => {
+    const fresh = { ...defaultCharacter };
+    setChar(fresh);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
+    } catch { /* ignore */ }
+  }, []);
+
   // Convenience updater for array fields
   const updateArrayField = useCallback(<K extends keyof CharacterData>(
     field: K,
@@ -648,6 +656,7 @@ export function useCharacterSheet() {
   return {
     char,
     update,
+    resetToNew,
     updateArrayField,
     updateWeapon,
     updatePotion,

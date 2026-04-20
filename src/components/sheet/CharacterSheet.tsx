@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useCharacterSheet } from '@/hooks/useCharacterSheet';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { CharacterTab } from './CharacterTab';
@@ -29,12 +29,9 @@ const FONTS = ['Default', 'Garamond', 'Raleway'];
 
 export function CharacterSheet() {
   const [activeTab, setActiveTab] = useState<TabId>('character');
-  const [nostrDrawerOpen, setNostrDrawerOpen] = useState(false);
-  // Track which Nostr character ID is currently loaded (null = local only)
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [currentNostrId, setCurrentNostrId] = useState<string | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const loadRef = useRef<HTMLInputElement>(null);
   const { user } = useCurrentUser();
 
   const {
@@ -46,25 +43,11 @@ export function CharacterSheet() {
     updateProficiency,
     updateSpecialAbility,
     updateSpell,
-    saveToFile,
-    loadFromFile,
+    resetToNew,
     setMovementFromBase,
     autoFillAbility,
     gearTotalWeight,
   } = useCharacterSheet();
-
-  const handleLoadFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = ''; // reset immediately so the same file can be re-selected
-    if (!file) return;
-    setLoadError(null);
-    try {
-      await loadFromFile(file);
-      setCurrentNostrId(null);
-    } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Failed to load file');
-    }
-  }, [loadFromFile]);
 
   function handleFontChange(font: string) {
     update({ font });
@@ -80,40 +63,31 @@ export function CharacterSheet() {
     update({ pencilColour: colour });
   }
 
-  // Called when a Nostr character is loaded via the drawer
-  function handleNostrLoad(loadedChar: CharacterData, nostrId: string) {
-    // Manually populate the character sheet state
-    update(loadedChar);
-    setCurrentNostrId(nostrId);
+  function handleNew() {
+    if (char.name.trim() || Object.values(char).some(v => typeof v === 'string' && v.trim())) {
+      if (!confirm('Start a new character? Unsaved changes will be lost.')) return;
+    }
+    resetToNew();
+    setCurrentNostrId(null);
+    setActiveTab('character');
   }
 
-  // Called after a successful save to Nostr
-  function handleNostrSaved(nostrId: string) {
+  // Called when a Nostr character is loaded via the drawer
+  const handleNostrLoad = useCallback((loadedChar: CharacterData, nostrId: string) => {
+    update(loadedChar);
     setCurrentNostrId(nostrId);
-  }
+  }, [update]);
+
+  // Called after a successful save to Nostr
+  const handleNostrSaved = useCallback((nostrId: string) => {
+    setCurrentNostrId(nostrId);
+  }, []);
 
   const charName = char.name.trim() || 'New Character';
   const isLoggedIn = !!user;
 
   return (
-    <div
-      className="flex flex-col h-screen"
-      style={{ background: 'var(--adnd-content-bg)' }}
-      onDragEnter={e => e.preventDefault()}
-      onDragOver={e => e.preventDefault()}
-      onDrop={async e => {
-        e.preventDefault();
-        const file = e.dataTransfer.files[0];
-        if (!file) return;
-        setLoadError(null);
-        try {
-          await loadFromFile(file);
-          setCurrentNostrId(null);
-        } catch (err) {
-          setLoadError(err instanceof Error ? err.message : 'Failed to load file');
-        }
-      }}
-    >
+    <div className="flex flex-col h-screen" style={{ background: 'var(--adnd-content-bg)' }}>
       {/* ── Top Header ── */}
       <header
         className="flex items-center px-3 gap-2 shrink-0 z-10"
@@ -139,18 +113,7 @@ export function CharacterSheet() {
           >
             {charName}
           </span>
-          {/* Load error */}
-          {loadError && (
-            <span
-              className="font-handwriting text-[10px] text-red-400 block truncate cursor-pointer"
-              onClick={() => setLoadError(null)}
-              title="Click to dismiss"
-            >
-              ⚠ {loadError}
-            </span>
-          )}
-          {/* Show Nostr sync indicator if linked */}
-          {!loadError && currentNostrId && (
+          {currentNostrId && (
             <span className="font-cinzel text-[8px] uppercase tracking-widest block" style={{ color: 'var(--adnd-gold-dim)' }}>
               ⚡ nostr synced
             </span>
@@ -159,7 +122,18 @@ export function CharacterSheet() {
 
         {/* Action buttons */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Nostr Cloud button — always visible, shows login prompt if not logged in */}
+          {/* New */}
+          <button
+            className="flex items-center gap-1 px-2 py-1.5 rounded text-xs font-cinzel border transition-colors"
+            style={{ background: 'var(--adnd-dark3)', color: 'var(--adnd-gold-light)', border: '1px solid var(--adnd-gold-dim)' }}
+            onClick={handleNew}
+            title="New character"
+          >
+            ✦
+            <span className="hidden sm:inline">New</span>
+          </button>
+
+          {/* Load — opens drawer */}
           <button
             className="flex items-center gap-1 px-2 py-1.5 rounded text-xs font-cinzel border transition-all"
             style={{
@@ -167,41 +141,12 @@ export function CharacterSheet() {
               color: isLoggedIn ? 'var(--adnd-gold)' : '#8a9ab8',
               border: isLoggedIn ? '1px solid var(--adnd-gold-dim)' : '1px solid #3a4060',
             }}
-            onClick={() => setNostrDrawerOpen(true)}
-            title={isLoggedIn ? 'Nostr cloud sync' : 'Sign in with Nostr to sync characters'}
+            onClick={() => setDrawerOpen(true)}
+            title="Load or save characters"
           >
-            <span>⚡</span>
-            <span className="hidden sm:inline">{isLoggedIn ? 'Nostr' : 'Sign in'}</span>
-          </button>
-
-          {/* Local Save (JSON) */}
-          <button
-            className="flex items-center gap-1 px-2 py-1.5 rounded text-xs font-cinzel border transition-colors"
-            style={{ background: 'var(--adnd-dark3)', color: 'var(--adnd-gold-light)', border: '1px solid var(--adnd-gold-dim)' }}
-            onClick={saveToFile}
-            title="Save character as JSON file (Ctrl+S)"
-          >
-            💾
-            <span className="hidden sm:inline">Save</span>
-          </button>
-
-          {/* Local Load (JSON) */}
-          <button
-            className="flex items-center gap-1 px-2 py-1.5 rounded text-xs font-cinzel border transition-colors"
-            style={{ background: 'var(--adnd-dark3)', color: 'var(--adnd-gold-light)', border: '1px solid var(--adnd-gold-dim)' }}
-            onClick={() => loadRef.current?.click()}
-            title="Load character from JSON file"
-          >
-            📂
+            📜
             <span className="hidden sm:inline">Load</span>
           </button>
-          <input
-            type="file"
-            ref={loadRef}
-            accept=".json"
-            className="hidden"
-            onChange={handleLoadFile}
-          />
 
           {/* Pencil colour */}
           <label
@@ -290,14 +235,15 @@ export function CharacterSheet() {
         ))}
       </nav>
 
-      {/* ── Nostr Character Drawer ── */}
+      {/* ── Character Drawer ── */}
       <NostrCharacterDrawer
-        isOpen={nostrDrawerOpen}
-        onClose={() => setNostrDrawerOpen(false)}
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
         currentChar={char}
         currentNostrId={currentNostrId}
         onLoad={handleNostrLoad}
         onSaved={handleNostrSaved}
+        onNew={handleNew}
       />
     </div>
   );
