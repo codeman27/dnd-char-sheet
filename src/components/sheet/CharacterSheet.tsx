@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useCharacterSheet } from '@/hooks/useCharacterSheet';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostrCharacters } from '@/hooks/useNostrCharacters';
+import { useNostrLogin } from '@nostrify/react/login';
 import { CharacterTab } from './CharacterTab';
 import { CombatTab } from './CombatTab';
 import { AbilitiesTab } from './AbilitiesTab';
@@ -35,10 +36,14 @@ const BTN_BASE = {
 export function CharacterSheet() {
   const [activeTab, setActiveTab] = useState<TabId>('character');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [currentNostrId, setCurrentNostrId] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
 
+  const menuRef = useRef<HTMLDivElement>(null);
+
   const { user } = useCurrentUser();
+  const { logins, removeLogin } = useNostrLogin();
   const { saveCharacter } = useNostrCharacters();
 
   const {
@@ -56,7 +61,20 @@ export function CharacterSheet() {
     gearTotalWeight,
   } = useCharacterSheet();
 
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [menuOpen]);
+
   function handleNew() {
+    setMenuOpen(false);
     if (char.name.trim()) {
       if (!confirm('Start a new character? Unsaved changes will be lost.')) return;
     }
@@ -66,9 +84,26 @@ export function CharacterSheet() {
     setSaveStatus('idle');
   }
 
+  function handleLoad() {
+    setMenuOpen(false);
+    setDrawerOpen(true);
+  }
+
+  function handleLogout() {
+    setMenuOpen(false);
+    if (!confirm('Log out of Nostr?')) return;
+    // removeLogin takes the login id (not pubkey)
+    const login = logins[0];
+    if (login) removeLogin(login.id);
+  }
+
+  function handleSignIn() {
+    setMenuOpen(false);
+    setDrawerOpen(true);
+  }
+
   async function handleSave() {
     if (!user) {
-      // Not logged in — open the drawer so they can sign in
       setDrawerOpen(true);
       return;
     }
@@ -84,14 +119,12 @@ export function CharacterSheet() {
     }
   }
 
-  // Called when a Nostr character is loaded via the drawer
   const handleNostrLoad = useCallback((loadedChar: CharacterData, nostrId: string) => {
     update(loadedChar);
     setCurrentNostrId(nostrId);
     setSaveStatus('idle');
   }, [update]);
 
-  // Called after a save triggered inside the drawer
   const handleNostrSaved = useCallback((nostrId: string) => {
     setCurrentNostrId(nostrId);
   }, []);
@@ -99,14 +132,12 @@ export function CharacterSheet() {
   const charName = char.name.trim() || 'New Character';
   const isLoggedIn = !!user;
 
-  // Save button appearance
-  const saveStyle = saveStatus === 'success'
-    ? { background: '#1a4a1a', color: '#6fc86f', border: '1px solid #2a6a2a' }
-    : saveStatus === 'error'
-    ? { background: '#4a1a1a', color: '#f08080', border: '1px solid #6a2a2a' }
-    : saveStatus === 'saving'
-    ? { ...BTN_BASE, opacity: 0.7 }
-    : BTN_BASE;
+  // Save button styling
+  const saveStyle =
+    saveStatus === 'success' ? { background: '#1a4a1a', color: '#6fc86f', border: '1px solid #2a6a2a' } :
+    saveStatus === 'error'   ? { background: '#4a1a1a', color: '#f08080', border: '1px solid #6a2a2a' } :
+    saveStatus === 'saving'  ? { ...BTN_BASE, opacity: 0.7 as number } :
+    BTN_BASE;
 
   const saveLabel =
     saveStatus === 'saving' ? '…' :
@@ -125,6 +156,76 @@ export function CharacterSheet() {
           minHeight: '52px',
         }}
       >
+        {/* ── Hamburger menu ── */}
+        <div className="relative shrink-0" ref={menuRef}>
+          <button
+            className="flex flex-col items-center justify-center gap-[5px] w-9 h-9 rounded border transition-colors"
+            style={menuOpen
+              ? { background: 'rgba(201,162,39,0.15)', border: '1px solid var(--adnd-gold-dim)', color: 'var(--adnd-gold-light)' }
+              : { ...BTN_BASE }
+            }
+            onClick={() => setMenuOpen(v => !v)}
+            aria-label="Menu"
+          >
+            {/* Three bars */}
+            <span className="block w-4 h-[2px] rounded-full transition-all" style={{ background: 'var(--adnd-gold-light)' }} />
+            <span className="block w-4 h-[2px] rounded-full transition-all" style={{ background: 'var(--adnd-gold-light)' }} />
+            <span className="block w-4 h-[2px] rounded-full transition-all" style={{ background: 'var(--adnd-gold-light)' }} />
+          </button>
+
+          {/* Dropdown */}
+          {menuOpen && (
+            <div
+              className="absolute left-0 top-full mt-1.5 rounded-lg overflow-hidden z-50 min-w-[140px] shadow-xl"
+              style={{ background: 'var(--adnd-dark2)', border: '1px solid var(--adnd-gold-dim)' }}
+            >
+              {/* New */}
+              <button
+                className="w-full flex items-center gap-3 px-4 py-3 text-left font-cinzel text-xs uppercase tracking-wide transition-colors hover:bg-white/5"
+                style={{ color: 'var(--adnd-gold-light)' }}
+                onClick={handleNew}
+              >
+                <span className="text-sm">✦</span>
+                New
+              </button>
+
+              {/* Load */}
+              <button
+                className="w-full flex items-center gap-3 px-4 py-3 text-left font-cinzel text-xs uppercase tracking-wide transition-colors hover:bg-white/5"
+                style={{ color: 'var(--adnd-gold-light)', borderTop: '1px solid #2a3050' }}
+                onClick={handleLoad}
+              >
+                <span className="text-sm">📜</span>
+                Load
+              </button>
+
+              {/* Divider */}
+              <div style={{ borderTop: '1px solid #2a3050' }} />
+
+              {/* Log Out / Sign In */}
+              {isLoggedIn ? (
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left font-cinzel text-xs uppercase tracking-wide transition-colors hover:bg-white/5"
+                  style={{ color: '#cc6666' }}
+                  onClick={handleLogout}
+                >
+                  <span className="text-sm">⬡</span>
+                  Log Out
+                </button>
+              ) : (
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left font-cinzel text-xs uppercase tracking-wide transition-colors hover:bg-white/5"
+                  style={{ color: 'var(--adnd-gold)' }}
+                  onClick={handleSignIn}
+                >
+                  <span className="text-sm">⚡</span>
+                  Sign In
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Logo */}
         <img
           src={ADND_LOGO}
@@ -148,59 +249,25 @@ export function CharacterSheet() {
           )}
         </div>
 
-        {/* Action buttons: New · Load · Save */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-cinzel border transition-colors"
-            style={BTN_BASE}
-            onClick={handleNew}
-            title="New character"
-          >
-            New
-          </button>
-
-          <button
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-cinzel border transition-all"
-            style={
-              isLoggedIn
-                ? { background: 'rgba(201,162,39,0.15)', color: 'var(--adnd-gold)', border: '1px solid var(--adnd-gold-dim)' }
-                : BTN_BASE
-            }
-            onClick={() => setDrawerOpen(true)}
-            title="Load a character"
-          >
-            Load
-          </button>
-
-          <button
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-cinzel border transition-all"
-            style={saveStyle}
-            onClick={handleSave}
-            disabled={saveStatus === 'saving'}
-            title={isLoggedIn ? 'Save to Nostr' : 'Sign in to save'}
-          >
-            {saveLabel}
-          </button>
-        </div>
+        {/* Save button */}
+        <button
+          className="shrink-0 px-3 py-1.5 rounded text-xs font-cinzel border transition-all"
+          style={saveStyle}
+          onClick={handleSave}
+          disabled={saveStatus === 'saving'}
+          title={isLoggedIn ? 'Save to Nostr' : 'Sign in to save'}
+        >
+          {saveLabel}
+        </button>
       </header>
 
       {/* ── Scrollable Content ── */}
       <main className="flex-1 overflow-y-auto p-3 pb-24">
-        {activeTab === 'character' && (
-          <CharacterTab char={char} update={update} />
-        )}
-        {activeTab === 'combat' && (
-          <CombatTab char={char} update={update} updateWeapon={updateWeapon} />
-        )}
-        {activeTab === 'abilities' && (
-          <AbilitiesTab char={char} update={update} autoFillAbility={autoFillAbility} />
-        )}
-        {activeTab === 'skills' && (
-          <SkillsTab char={char} update={update} updateSpecialAbility={updateSpecialAbility} />
-        )}
-        {activeTab === 'magic' && (
-          <MagicTab char={char} updateSpell={updateSpell} />
-        )}
+        {activeTab === 'character' && <CharacterTab char={char} update={update} />}
+        {activeTab === 'combat' && <CombatTab char={char} update={update} updateWeapon={updateWeapon} />}
+        {activeTab === 'abilities' && <AbilitiesTab char={char} update={update} autoFillAbility={autoFillAbility} />}
+        {activeTab === 'skills' && <SkillsTab char={char} update={update} updateSpecialAbility={updateSpecialAbility} />}
+        {activeTab === 'magic' && <MagicTab char={char} updateSpell={updateSpell} />}
         {activeTab === 'gear' && (
           <GearTab
             char={char}
@@ -211,18 +278,13 @@ export function CharacterSheet() {
             gearTotalWeight={gearTotalWeight}
           />
         )}
-        {activeTab === 'notes' && (
-          <NotesTab char={char} update={update} updateProficiency={updateProficiency} />
-        )}
+        {activeTab === 'notes' && <NotesTab char={char} update={update} updateProficiency={updateProficiency} />}
       </main>
 
       {/* ── Bottom Navigation ── */}
       <nav
         className="bottom-nav fixed bottom-0 left-0 right-0 flex items-stretch z-20"
-        style={{
-          background: 'var(--adnd-dark)',
-          borderTop: '2px solid var(--adnd-gold-dim)',
-        }}
+        style={{ background: 'var(--adnd-dark)', borderTop: '2px solid var(--adnd-gold-dim)' }}
       >
         {TABS.map(tab => (
           <button
