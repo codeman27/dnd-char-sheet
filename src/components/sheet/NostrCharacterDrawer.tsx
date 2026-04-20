@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { LoginArea } from '@/components/auth/LoginArea';
+import LoginDialog from '@/components/auth/LoginDialog';
+import SignupDialog from '@/components/auth/SignupDialog';
 import { useNostrCharacters, type CharacterMeta } from '@/hooks/useNostrCharacters';
 import type { CharacterData } from '@/hooks/useCharacterSheet';
 
@@ -45,6 +46,11 @@ export function NostrCharacterDrawer({ isOpen, onClose, currentChar, currentNost
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [saveMsg, setSaveMsg] = useState('');
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+  const [signupDialogOpen, setSignupDialogOpen] = useState(false);
+
+  // Whether a Radix dialog is open on top — hide our backdrop so it doesn't intercept clicks
+  const dialogOpen = loginDialogOpen || signupDialogOpen;
 
   async function handleSave() {
     setSaveStatus('saving');
@@ -95,11 +101,13 @@ export function NostrCharacterDrawer({ isOpen, onClose, currentChar, currentNost
 
   return (
     <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/60 z-30 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      {/* Backdrop — hidden when a login/signup dialog is open so Radix can receive clicks */}
+      {!dialogOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-30 backdrop-blur-sm"
+          onClick={onClose}
+        />
+      )}
 
       {/* Drawer panel */}
       <div
@@ -150,14 +158,39 @@ export function NostrCharacterDrawer({ isOpen, onClose, currentChar, currentNost
           {!isLoggedIn ? (
             <div className="flex flex-col items-center gap-4 py-6">
               <div className="text-center">
-                <p className="font-cinzel text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--adnd-gold)' }}>
+                <p className="font-cinzel text-xs uppercase tracking-widest mb-2" style={{ color: 'var(--adnd-gold)' }}>
                   Sign in with Nostr
                 </p>
                 <p className="font-handwriting text-sm" style={{ color: '#8a9ab8' }}>
                   Log in to save &amp; sync your characters across all your devices using your private key.
                 </p>
               </div>
-              <LoginArea className="w-full max-w-xs" />
+              <div className="flex gap-3 w-full max-w-xs">
+                <button
+                  className="flex-1 py-2.5 rounded-full font-cinzel text-xs uppercase tracking-wide transition-colors"
+                  style={{ background: 'var(--adnd-dark3)', color: 'var(--adnd-gold-light)', border: '1px solid var(--adnd-gold-dim)' }}
+                  onClick={() => setLoginDialogOpen(true)}
+                >
+                  Log In
+                </button>
+                <button
+                  className="flex-1 py-2.5 rounded-full font-cinzel text-xs uppercase tracking-wide transition-colors"
+                  style={{ background: 'rgba(201,162,39,0.15)', color: 'var(--adnd-gold)', border: '1px solid var(--adnd-gold-dim)' }}
+                  onClick={() => setSignupDialogOpen(true)}
+                >
+                  Sign Up
+                </button>
+              </div>
+
+              <LoginDialog
+                isOpen={loginDialogOpen}
+                onClose={() => setLoginDialogOpen(false)}
+                onLogin={() => { setLoginDialogOpen(false); }}
+              />
+              <SignupDialog
+                isOpen={signupDialogOpen}
+                onClose={() => setSignupDialogOpen(false)}
+              />
             </div>
           ) : (
             <>
