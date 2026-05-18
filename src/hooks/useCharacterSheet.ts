@@ -331,8 +331,12 @@ export interface CharacterData {
   spellsPerLevel: string[];
   // Special Abilities
   specialAbilities: SpecialAbilityEntry[];
-  // Spell list
+  // Spell list (legacy manual entries)
   spells: SpellEntry[];
+  // Known spells (ids from spellData)
+  knownSpells: string[];
+  // Favorite spells (ids from spellData)
+  favoriteSpells: string[];
   // Movement
   baseMovement: string;
   movementLight: string;
@@ -433,6 +437,8 @@ const defaultCharacter: CharacterData = {
   spellsPerLevel: Array(9).fill(''),
   specialAbilities: createDefaultSpecialAbilities(7),
   spells: createDefaultSpells(30),
+  knownSpells: [],
+  favoriteSpells: [],
   baseMovement: '',
   movementLight: '',
   movementMod: '',
@@ -579,6 +585,36 @@ export function useCharacterSheet() {
     });
   }, []);
 
+  const addKnownSpell = useCallback((id: string) => {
+    setChar(prev => {
+      if (prev.knownSpells.includes(id)) return prev;
+      const knownSpells = [...prev.knownSpells, id];
+      const next = { ...prev, knownSpells };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
+  const removeKnownSpell = useCallback((id: string) => {
+    setChar(prev => {
+      const knownSpells = prev.knownSpells.filter(s => s !== id);
+      const next = { ...prev, knownSpells };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
+  const toggleFavoriteSpell = useCallback((id: string) => {
+    setChar(prev => {
+      const favoriteSpells = prev.favoriteSpells.includes(id)
+        ? prev.favoriteSpells.filter(s => s !== id)
+        : [...prev.favoriteSpells, id];
+      const next = { ...prev, favoriteSpells };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
   const saveToFile = useCallback(() => {
     const data = JSON.stringify({ version: 4, ...char }, null, 2);
     const uri = 'data:application/json;charset=utf-8,' + encodeURIComponent(data);
@@ -675,6 +711,9 @@ export function useCharacterSheet() {
     updateProficiency,
     updateSpecialAbility,
     updateSpell,
+    addKnownSpell,
+    removeKnownSpell,
+    toggleFavoriteSpell,
     saveToFile,
     loadFromFile,
     setMovementFromBase,
