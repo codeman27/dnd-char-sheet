@@ -57,9 +57,6 @@ export function CharacterSheet() {
     updateProficiency,
     updateSpecialAbility,
     updateSpell,
-    addKnownSpell,
-    removeKnownSpell,
-    toggleFavoriteSpell,
     setMovementFromBase,
     autoFillAbility,
     gearTotalWeight,
@@ -269,7 +266,7 @@ export function CharacterSheet() {
         {activeTab === 'combat' && <CombatTab char={char} update={update} updateWeapon={updateWeapon} />}
         {activeTab === 'abilities' && <AbilitiesTab char={char} update={update} autoFillAbility={autoFillAbility} />}
         {activeTab === 'skills' && <SkillsTab char={char} update={update} updateSpecialAbility={updateSpecialAbility} />}
-        {activeTab === 'magic' && <MagicTab knownSpellIds={char.knownSpells ?? []} favoriteSpellIds={char.favoriteSpells ?? []} addKnownSpell={addKnownSpell} removeKnownSpell={removeKnownSpell} toggleFavoriteSpell={toggleFavoriteSpell} />}
+        {activeTab === 'magic' && <MagicTab char={char} updateSpell={updateSpell} />}
         {activeTab === 'gear' && (
           <GearTab
             char={char}
