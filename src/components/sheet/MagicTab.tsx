@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookOpen, Trash2, Plus } from 'lucide-react';
+import { BookOpen, Trash2, Plus, Star } from 'lucide-react';
 import { SheetCard } from './SheetCard';
 import { SpellBook } from './SpellBook';
 import { getSpellById } from '@/lib/spellData';
@@ -34,10 +34,12 @@ function schoolBadgeStyle(school: string): { background: string; color: string; 
 
 interface KnownSpellCardProps {
   spell: SpellData;
+  isFavorite: boolean;
   onRemove: () => void;
+  onToggleFavorite: () => void;
 }
 
-function KnownSpellCard({ spell, onRemove }: KnownSpellCardProps) {
+function KnownSpellCard({ spell, isFavorite, onRemove, onToggleFavorite }: KnownSpellCardProps) {
   const [open, setOpen] = useState(false);
   const badgeStyle = schoolBadgeStyle(spell.school);
 
@@ -71,6 +73,15 @@ function KnownSpellCard({ spell, onRemove }: KnownSpellCardProps) {
         </div>
 
         <button
+          className="shrink-0 ml-1 mt-0.5 p-1 rounded transition-colors"
+          style={isFavorite ? { color: '#e6c35a' } : { color: '#3a4060' }}
+          onClick={e => { e.stopPropagation(); onToggleFavorite(); }}
+          title={isFavorite ? 'Remove from favorites' : 'Mark as favorite'}
+          aria-label={isFavorite ? 'Remove from favorites' : 'Mark as favorite'}
+        >
+          <Star size={13} fill={isFavorite ? '#e6c35a' : 'none'} />
+        </button>
+        <button
           className="shrink-0 ml-1 mt-0.5 p-1 rounded hover:bg-[#3a1a1a] transition-colors"
           style={{ color: '#7a5050' }}
           onClick={e => { e.stopPropagation(); if (confirm(`Remove ${spell.name}?`)) onRemove(); }}
@@ -103,10 +114,17 @@ function StatPill({ label, value }: { label: string; value: string }) {
 
 export function MagicTab({ knownSpellIds, favoriteSpellIds, addKnownSpell, removeKnownSpell, toggleFavoriteSpell }: Props) {
   const [spellBookOpen, setSpellBookOpen] = useState(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   const knownSpells = knownSpellIds
     .map(id => getSpellById(id))
     .filter((s): s is SpellData => s !== undefined);
+
+  const displayedSpells = showFavoritesOnly
+    ? knownSpells.filter(s => favoriteSpellIds.includes(s.id))
+    : knownSpells;
+
+  const favoriteCount = knownSpells.filter(s => favoriteSpellIds.includes(s.id)).length;
 
   return (
     <>
@@ -114,14 +132,42 @@ export function MagicTab({ knownSpellIds, favoriteSpellIds, addKnownSpell, remov
         <SheetCard
           title="Spell List"
           headerExtra={
-            <button
-              className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-cinzel uppercase tracking-wide border transition-all hover:brightness-110"
-              style={{ background: 'var(--adnd-dark)', color: '#e6c35a', border: '1px solid var(--adnd-gold-dim)' }}
-              onClick={() => setSpellBookOpen(true)}
-            >
-              <Plus size={10} />
-              Add Spell
-            </button>
+            <div className="ml-auto flex items-center gap-1.5">
+              {/* Favorites filter */}
+              {knownSpells.length > 0 && (
+                <button
+                  className="flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-cinzel uppercase tracking-wide border transition-all hover:brightness-110"
+                  style={showFavoritesOnly
+                    ? { background: '#3a2a00', color: '#e6c35a', border: '1px solid var(--adnd-gold)' }
+                    : { background: 'var(--adnd-dark)', color: '#8090a8', border: '1px solid #3a4060' }
+                  }
+                  onClick={() => setShowFavoritesOnly(v => !v)}
+                  title={showFavoritesOnly ? 'Show all spells' : 'Show favorites only'}
+                >
+                  <Star size={10} fill={showFavoritesOnly ? '#e6c35a' : 'none'} />
+                  {showFavoritesOnly ? 'Favorites' : 'Favorites'}
+                  {favoriteCount > 0 && (
+                    <span
+                      className="px-1 rounded-full text-[8px]"
+                      style={{
+                        background: showFavoritesOnly ? '#e6c35a33' : '#3a4060',
+                        color: showFavoritesOnly ? '#e6c35a' : '#7a8aaa',
+                      }}
+                    >
+                      {favoriteCount}
+                    </span>
+                  )}
+                </button>
+              )}
+              <button
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-cinzel uppercase tracking-wide border transition-all hover:brightness-110"
+                style={{ background: 'var(--adnd-dark)', color: '#e6c35a', border: '1px solid var(--adnd-gold-dim)' }}
+                onClick={() => setSpellBookOpen(true)}
+              >
+                <Plus size={10} />
+                Add Spell
+              </button>
+            </div>
           }
         >
           {knownSpells.length === 0 ? (
@@ -147,13 +193,28 @@ export function MagicTab({ knownSpellIds, favoriteSpellIds, addKnownSpell, remov
                 Open Spell Book
               </button>
             </div>
+          ) : displayedSpells.length === 0 ? (
+            <div
+              className="flex flex-col items-center gap-2 py-8 text-center rounded-lg"
+              style={{ border: '1px dashed #2a3048' }}
+            >
+              <Star size={24} style={{ color: '#3a4060' }} />
+              <p className="font-cinzel text-[11px] uppercase tracking-wide" style={{ color: '#5a6a80' }}>
+                No favorite spells
+              </p>
+              <p className="text-[10px]" style={{ color: '#3a4a60' }}>
+                Star spells in your list to mark them as favorites.
+              </p>
+            </div>
           ) : (
             <div>
-              {knownSpells.map(spell => (
+              {displayedSpells.map(spell => (
                 <KnownSpellCard
                   key={spell.id}
                   spell={spell}
+                  isFavorite={favoriteSpellIds.includes(spell.id)}
                   onRemove={() => removeKnownSpell(spell.id)}
+                  onToggleFavorite={() => toggleFavoriteSpell(spell.id)}
                 />
               ))}
             </div>
@@ -164,9 +225,7 @@ export function MagicTab({ knownSpellIds, favoriteSpellIds, addKnownSpell, remov
       {spellBookOpen && (
         <SpellBook
           knownSpellIds={knownSpellIds}
-          favoriteSpellIds={favoriteSpellIds}
           onAdd={addKnownSpell}
-          onToggleFavorite={toggleFavoriteSpell}
           onClose={() => setSpellBookOpen(false)}
         />
       )}

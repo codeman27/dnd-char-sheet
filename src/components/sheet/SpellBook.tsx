@@ -1,13 +1,11 @@
 import { useState, useMemo } from 'react';
-import { X, BookOpen, Plus, Check, Search, Star } from 'lucide-react';
+import { X, BookOpen, Plus, Check, Search } from 'lucide-react';
 import { SPELLS } from '@/lib/spellData';
 import type { SpellData } from '@/lib/spellData';
 
 interface Props {
   knownSpellIds: string[];
-  favoriteSpellIds: string[];
   onAdd: (spellId: string) => void;
-  onToggleFavorite: (spellId: string) => void;
   onClose: () => void;
 }
 
@@ -35,12 +33,10 @@ function schoolColor(school: string): string {
 interface SpellRowProps {
   spell: SpellData;
   isKnown: boolean;
-  isFavorite: boolean;
   onAdd: (id: string) => void;
-  onToggleFavorite: (id: string) => void;
 }
 
-function SpellRow({ spell, isKnown, isFavorite, onAdd, onToggleFavorite }: SpellRowProps) {
+function SpellRow({ spell, isKnown, onAdd }: SpellRowProps) {
   const [open, setOpen] = useState(false);
   const color = schoolColor(spell.school);
 
@@ -100,39 +96,22 @@ function SpellRow({ spell, isKnown, isFavorite, onAdd, onToggleFavorite }: Spell
         </div>
 
         {/* Add button — stop propagation so click doesn't toggle accordion */}
-        <div className="shrink-0 ml-1 mt-0.5 flex items-center gap-1">
-          {/* Favorite star */}
-          <button
-            className="p-1 rounded transition-colors"
-            style={isFavorite
-              ? { color: '#e6c35a' }
-              : { color: '#3a4060' }
-            }
-            onClick={e => { e.stopPropagation(); onToggleFavorite(spell.id); }}
-            title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-            aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-          >
-            <Star size={13} fill={isFavorite ? '#e6c35a' : 'none'} />
-          </button>
-
-          {/* Add button */}
-          <button
-            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-cinzel uppercase tracking-wide border transition-all"
-            style={isKnown
-              ? { background: '#1a3a1a', color: '#6fc86f', border: '1px solid #2a5a2a', cursor: 'default' }
-              : { background: '#1a2a1a', color: '#e6c35a', border: '1px solid var(--adnd-gold-dim)' }
-            }
-            disabled={isKnown}
-            onClick={e => {
-              e.stopPropagation();
-              if (!isKnown) onAdd(spell.id);
-            }}
-            title={isKnown ? 'Already in spell list' : 'Add to spell list'}
-          >
-            {isKnown ? <Check size={10} /> : <Plus size={10} />}
-            {isKnown ? 'Added' : 'Add'}
-          </button>
-        </div>
+        <button
+          className="shrink-0 ml-1 mt-0.5 flex items-center gap-1 px-2 py-1 rounded text-[10px] font-cinzel uppercase tracking-wide border transition-all"
+          style={isKnown
+            ? { background: '#1a3a1a', color: '#6fc86f', border: '1px solid #2a5a2a', cursor: 'default' }
+            : { background: '#1a2a1a', color: '#e6c35a', border: '1px solid var(--adnd-gold-dim)' }
+          }
+          disabled={isKnown}
+          onClick={e => {
+            e.stopPropagation();
+            if (!isKnown) onAdd(spell.id);
+          }}
+          title={isKnown ? 'Already in spell list' : 'Add to spell list'}
+        >
+          {isKnown ? <Check size={10} /> : <Plus size={10} />}
+          {isKnown ? 'Added' : 'Add'}
+        </button>
       </div>
 
       {/* ── Full description (accordion) ── */}
@@ -167,15 +146,13 @@ function StatPill({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function SpellBook({ knownSpellIds, favoriteSpellIds, onAdd, onToggleFavorite, onClose }: Props) {
+export function SpellBook({ knownSpellIds, onAdd, onClose }: Props) {
   const [search, setSearch] = useState('');
   const [levelFilter, setLevelFilter] = useState<number | null>(null);
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return SPELLS.filter(s => {
-      if (showFavoritesOnly && !favoriteSpellIds.includes(s.id)) return false;
       if (levelFilter !== null && s.level !== levelFilter) return false;
       if (!q) return true;
       return (
@@ -185,7 +162,7 @@ export function SpellBook({ knownSpellIds, favoriteSpellIds, onAdd, onToggleFavo
         s.summary.toLowerCase().includes(q)
       );
     });
-  }, [search, levelFilter, showFavoritesOnly, favoriteSpellIds]);
+  }, [search, levelFilter]);
 
   const availableLevels = useMemo(() =>
     [...new Set(SPELLS.map(s => s.level))].sort((a, b) => a - b),
@@ -257,27 +234,6 @@ export function SpellBook({ knownSpellIds, favoriteSpellIds, onAdd, onToggleFavo
 
           {/* Level filter pills */}
           <div className="flex gap-1.5 flex-wrap">
-            {/* Favorites toggle */}
-            <button
-              onClick={() => setShowFavoritesOnly(v => !v)}
-              className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-cinzel border transition-colors"
-              style={showFavoritesOnly
-                ? { background: '#3a2a00', color: '#e6c35a', border: '1px solid var(--adnd-gold)' }
-                : { background: 'transparent', color: '#8090a8', border: '1px solid #3a4060' }
-              }
-            >
-              <Star size={9} fill={showFavoritesOnly ? '#e6c35a' : 'none'} />
-              Favorites
-              {favoriteSpellIds.length > 0 && (
-                <span
-                  className="ml-0.5 px-1 rounded-full text-[8px]"
-                  style={{ background: showFavoritesOnly ? '#e6c35a33' : '#3a4060', color: showFavoritesOnly ? '#e6c35a' : '#7a8aaa' }}
-                >
-                  {favoriteSpellIds.length}
-                </span>
-              )}
-            </button>
-
             <button
               onClick={() => setLevelFilter(null)}
               className="px-2 py-0.5 rounded text-[10px] font-cinzel border transition-colors"
@@ -317,9 +273,7 @@ export function SpellBook({ knownSpellIds, favoriteSpellIds, onAdd, onToggleFavo
                 key={spell.id}
                 spell={spell}
                 isKnown={knownSpellIds.includes(spell.id)}
-                isFavorite={favoriteSpellIds.includes(spell.id)}
                 onAdd={onAdd}
-                onToggleFavorite={onToggleFavorite}
               />
             ))
           )}
