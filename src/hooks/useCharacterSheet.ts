@@ -331,8 +331,10 @@ export interface CharacterData {
   spellsPerLevel: string[];
   // Special Abilities
   specialAbilities: SpecialAbilityEntry[];
-  // Spell list
+  // Spell list (legacy manual entries)
   spells: SpellEntry[];
+  // Known spells (ids from spellData)
+  knownSpells: string[];
   // Movement
   baseMovement: string;
   movementLight: string;
@@ -433,6 +435,7 @@ const defaultCharacter: CharacterData = {
   spellsPerLevel: Array(9).fill(''),
   specialAbilities: createDefaultSpecialAbilities(7),
   spells: createDefaultSpells(30),
+  knownSpells: [],
   baseMovement: '',
   movementLight: '',
   movementMod: '',
@@ -579,6 +582,25 @@ export function useCharacterSheet() {
     });
   }, []);
 
+  const addKnownSpell = useCallback((id: string) => {
+    setChar(prev => {
+      if (prev.knownSpells.includes(id)) return prev;
+      const knownSpells = [...prev.knownSpells, id];
+      const next = { ...prev, knownSpells };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
+  const removeKnownSpell = useCallback((id: string) => {
+    setChar(prev => {
+      const knownSpells = prev.knownSpells.filter(s => s !== id);
+      const next = { ...prev, knownSpells };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
   const saveToFile = useCallback(() => {
     const data = JSON.stringify({ version: 4, ...char }, null, 2);
     const uri = 'data:application/json;charset=utf-8,' + encodeURIComponent(data);
@@ -675,6 +697,8 @@ export function useCharacterSheet() {
     updateProficiency,
     updateSpecialAbility,
     updateSpell,
+    addKnownSpell,
+    removeKnownSpell,
     saveToFile,
     loadFromFile,
     setMovementFromBase,
