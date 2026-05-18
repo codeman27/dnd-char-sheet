@@ -629,6 +629,60 @@ export const SPELLS: SpellData[] = [
       'This spell grants supernatural strength to the recipient by raising his Strength score by 1d4 points or to a minimum of 16, whichever is higher. Each 10% of exceptional Strength counts as 1 point, so a character with a Strength of 17 could be raised as high as an 18/30, but no higher. Both the priest and the recipient must be in contact with solid stone or earth when the spell is cast—standing on the ground will do nicely, but flying or swimming will not.\n\nThe spell lasts for 3 rounds plus 1 round per caster level or until the subject loses contact with the earth. Obviously, this can happen in a number of ways, including being picked up or grappled by a larger creature, being knocked through the air by an impact or explosion, or even being magically moved in some fashion.\n\nThe material components are a chip of granite and a hair from a giant.',
     spellClass: 'priest',
   },
+  {
+    id: 'ring-of-hands',
+    name: 'Ring of Hands',
+    school: 'Abjuration',
+    sphere: 'Protection',
+    level: 1,
+    range: '0',
+    components: 'V, S',
+    duration: '2d10 rounds',
+    castingTime: '5',
+    areaOfEffect: 'Special (circle of priests)',
+    savingThrow: 'None',
+    summary:
+      'Cooperative spell (2–10 priests). Priests join hands forming a protective circle (~5 ft. circumference per priest). Acts as protection from evil: -1 to evil attackers per priest, +1 to saves per priest. Circle breaks if any priest moves or releases hands. Reversible: Ring of Woe (vs. good creatures).',
+    description:
+      'This is a cooperative magic spell. It requires a minimum of two priests and can accommodate a maximum of ten. Each priest must cast ring of hands on the same round. At the end of the casting, the priests involved join hands, thus completing the spell. If any priest breaks the circle, the spell immediately ceases. The priests may not move from their locations but are free to speak. They may not cast spells requiring a somatic or material component while the ring is formed.\n\nThe ring of hands forms a protective barrier around the priests and everything within their circle. For each priest, assume a five-foot circumference of the circle; thus, three priests would create a circle of 15-foot circumference. For easy calculation, assume that for each priest, the circle can accommodate four persons.\n\nThe barrier functions as a protection from evil spell. Attacks by evil creatures suffer a -1 penalty for every priest forming the circle. Saving throws made by the priests or anyone in the circle against attacks from such creatures receive a +1 bonus for every priest in the circle. Attempts at mental control over protected creatures are blocked. Extraplanar and conjured creatures are unable to touch the priests and those within the circle, although melee attacks against such creatures by those within the ring break the barrier.\n\nBecause the priests casting the spell cannot move and must hold hands, they do not receive any Dexterity bonuses to Armor Class. Furthermore, opponents gain a +2 bonus on attack rolls against the priests, since there is little they can do to avoid a blow. Creatures within the ring are free to act as they wish. Melee attacks by those within the ring are limited to piercing weapons and suffer a -1 penalty to attack rolls since the priests intervene.\n\nThe reverse of this spell, ring of woe, functions as detailed above except the effect applies to good creatures as would a protection from good spell.',
+    spellClass: 'priest',
+  },
+  {
+    id: 'sacred-guardian',
+    name: 'Sacred Guardian',
+    school: 'Divination',
+    sphere: 'Divination',
+    level: 1,
+    range: 'Touch',
+    components: 'V, S, M',
+    duration: '1 day/level',
+    castingTime: '1',
+    areaOfEffect: 'Creature touched',
+    savingThrow: 'None',
+    summary:
+      'Priest is instantly alerted when the touched recipient is in danger, regardless of distance or plane. At 3rd level+, priest also receives a mental image of the situation. Does not reveal location. M: a rose petal kissed by the recipient.',
+    description:
+      "By use of this spell, a priest becomes instantly aware when the recipient of the spell is in danger, regardless of the distance between the priest and the recipient. The recipient may be on a different plane of existence than the priest. When this spell is cast by a priest of at least 3rd level, he receives a mental image of the endangered person's situation. At no time, however, does the priest know the person's location through the use of this spell.\n\nThe material component is a rose petal that has been kissed by the spell recipient.",
+    spellClass: 'priest',
+  },
+  {
+    id: 'speak-with-astral-traveler',
+    name: 'Speak with Astral Traveler',
+    school: 'Divination',
+    sphere: 'Astral',
+    level: 1,
+    range: 'Touch',
+    components: 'V, S',
+    duration: '1 round/level',
+    castingTime: '1 round',
+    areaOfEffect: '1 creature',
+    savingThrow: 'None',
+    summary:
+      'Touch the comatose body of an astrally projected priest to establish mental two-way communication with the traveler for 1 round/level. Spell ends abruptly when duration expires.',
+    description:
+      'When a priest casts the 7th-level astral spell, he leaves his physical body in suspended animation while his astral body travels. By touching the comatose body and casting speak with astral traveler, a priest can mentally communicate with the projected individual. Although communication is mental, it takes the same amount of time as a normal, verbal dialogue. The spell ends abruptly when its duration expires.',
+    spellClass: 'priest',
+  },
 ];
 
 /** Look up a single spell by its id */

@@ -335,6 +335,8 @@ export interface CharacterData {
   spells: SpellEntry[];
   // Known spells (ids from spellData)
   knownSpells: string[];
+  // Favorite spells (ids from spellData)
+  favoriteSpells: string[];
   // Movement
   baseMovement: string;
   movementLight: string;
@@ -436,6 +438,7 @@ const defaultCharacter: CharacterData = {
   specialAbilities: createDefaultSpecialAbilities(7),
   spells: createDefaultSpells(30),
   knownSpells: [],
+  favoriteSpells: [],
   baseMovement: '',
   movementLight: '',
   movementMod: '',
@@ -601,6 +604,17 @@ export function useCharacterSheet() {
     });
   }, []);
 
+  const toggleFavoriteSpell = useCallback((id: string) => {
+    setChar(prev => {
+      const favoriteSpells = prev.favoriteSpells.includes(id)
+        ? prev.favoriteSpells.filter(s => s !== id)
+        : [...prev.favoriteSpells, id];
+      const next = { ...prev, favoriteSpells };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
   const saveToFile = useCallback(() => {
     const data = JSON.stringify({ version: 4, ...char }, null, 2);
     const uri = 'data:application/json;charset=utf-8,' + encodeURIComponent(data);
@@ -699,6 +713,7 @@ export function useCharacterSheet() {
     updateSpell,
     addKnownSpell,
     removeKnownSpell,
+    toggleFavoriteSpell,
     saveToFile,
     loadFromFile,
     setMovementFromBase,

@@ -7,8 +7,10 @@ import type { SpellData } from '@/lib/spellData';
 
 interface Props {
   knownSpellIds: string[];
+  favoriteSpellIds: string[];
   addKnownSpell: (id: string) => void;
   removeKnownSpell: (id: string) => void;
+  toggleFavoriteSpell: (id: string) => void;
 }
 
 function schoolBadgeStyle(school: string): { background: string; color: string; border: string } {
@@ -99,7 +101,7 @@ function StatPill({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function MagicTab({ knownSpellIds, addKnownSpell, removeKnownSpell }: Props) {
+export function MagicTab({ knownSpellIds, favoriteSpellIds, addKnownSpell, removeKnownSpell, toggleFavoriteSpell }: Props) {
   const [spellBookOpen, setSpellBookOpen] = useState(false);
 
   const knownSpells = knownSpellIds
@@ -162,7 +164,9 @@ export function MagicTab({ knownSpellIds, addKnownSpell, removeKnownSpell }: Pro
       {spellBookOpen && (
         <SpellBook
           knownSpellIds={knownSpellIds}
+          favoriteSpellIds={favoriteSpellIds}
           onAdd={addKnownSpell}
+          onToggleFavorite={toggleFavoriteSpell}
           onClose={() => setSpellBookOpen(false)}
         />
       )}
