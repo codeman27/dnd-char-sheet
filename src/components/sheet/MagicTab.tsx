@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { BookOpen, Trash2, Plus, Star } from 'lucide-react';
 import { SheetCard } from './SheetCard';
 import { SpellBook } from './SpellBook';
 import { getSpellById } from '@/lib/spellData';
@@ -13,102 +12,139 @@ interface Props {
   toggleFavoriteSpell: (id: string) => void;
 }
 
-function schoolBadgeStyle(school: string): { background: string; color: string; border: string } {
-  const map: Record<string, string> = {
-    'Abjuration':            '#4a6fa5',
-    'Alteration':            '#5a8a5a',
-    'Conjuration/Summoning': '#8a5a8a',
-    'Divination':            '#8a7a3a',
-    'Enchantment/Charm':     '#a05050',
-    'Evocation':             '#b06020',
-    'Illusion/Phantasm':     '#607080',
-    'Invocation':            '#7a3a3a',
-    'Necromancy':            '#4a4a6a',
-  };
-  let color = '#5a5a5a';
-  for (const [key, val] of Object.entries(map)) {
-    if (school.startsWith(key)) { color = val; break; }
-  }
-  return { background: color + '33', color, border: `1px solid ${color}55` };
+const SCHOOL_COLORS: Record<string, string> = {
+  Abjuration:  '#4a6fa5',
+  Alteration:  '#5a8a5a',
+  Conjuration: '#8a5a8a',
+  Divination:  '#5a7a8a',
+  Enchantment: '#c9a227',
+  Evocation:   '#b54a4a',
+  Illusion:    '#6a5a8a',
+  Invocation:  '#b54a4a',
+  Necromancy:  '#5a5a5a',
+};
+
+function schoolBadgeStyle(school: string): React.CSSProperties {
+  const key = Object.keys(SCHOOL_COLORS).find(k => school.startsWith(k));
+  const color = key ? SCHOOL_COLORS[key] : '#8a9ab8';
+  return { background: color + '33', color, border: `1px solid ${color}66` };
 }
 
 interface KnownSpellCardProps {
   spell: SpellData;
   isFavorite: boolean;
-  onRemove: () => void;
   onToggleFavorite: () => void;
+  onRemove: () => void;
 }
 
-function KnownSpellCard({ spell, isFavorite, onRemove, onToggleFavorite }: KnownSpellCardProps) {
+function KnownSpellCard({ spell, isFavorite, onToggleFavorite, onRemove }: KnownSpellCardProps) {
   const [open, setOpen] = useState(false);
-  const badgeStyle = schoolBadgeStyle(spell.school);
+
+  function handleRemove(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm(`Remove "${spell.name}" from your spell list?`)) return;
+    onRemove();
+  }
+
+  function handleStar(e: React.MouseEvent) {
+    e.stopPropagation();
+    onToggleFavorite();
+  }
 
   return (
-    <div className="rounded-lg overflow-hidden mb-2" style={{ border: '1px solid #2a3048', background: '#181b2c' }}>
+    <div
+      className="rounded-lg overflow-hidden mb-2"
+      style={{ background: 'var(--adnd-dark2)', border: '1px solid var(--adnd-gold-dim)' }}
+    >
+      {/* Header */}
       <div
-        className="flex items-start gap-2 px-3 py-2.5 cursor-pointer select-none hover:bg-[#1e2235] transition-colors"
+        className="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none hover:bg-white/5 transition-colors"
         onClick={() => setOpen(v => !v)}
       >
         <span
-          className="mt-0.5 shrink-0 text-[10px] transition-transform duration-150"
-          style={{ color: '#7a8aaa', transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}
+          className="text-[10px] shrink-0 transition-transform duration-200"
+          style={{ color: 'var(--adnd-gold-dim)', transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}
         >▶</span>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center flex-wrap gap-1.5">
-            <span className="font-cinzel text-[12px] font-semibold" style={{ color: '#e6c35a' }}>{spell.name}</span>
-            <span className="text-[9px] px-1.5 py-0.5 rounded font-cinzel uppercase tracking-wide" style={badgeStyle}>
-              {spell.school.split('/')[0]}
-            </span>
-            {spell.sphere && <span className="text-[9px]" style={{ color: '#7a8aaa' }}>{spell.sphere}</span>}
-          </div>
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
-            <StatPill label="Lvl" value={String(spell.level)} />
-            <StatPill label="Cast" value={spell.castingTime} />
-            <StatPill label="Range" value={spell.range} />
-            <StatPill label="Save" value={spell.savingThrow} />
-            <StatPill label="Dur" value={spell.duration} />
-          </div>
-          <p className="mt-1 text-[10px] leading-snug" style={{ color: '#a0b0c8' }}>{spell.summary}</p>
-        </div>
-
-        <button
-          className="shrink-0 ml-1 mt-0.5 p-1 rounded transition-colors"
-          style={isFavorite ? { color: '#e6c35a' } : { color: '#3a4060' }}
-          onClick={e => { e.stopPropagation(); onToggleFavorite(); }}
-          title={isFavorite ? 'Remove from favorites' : 'Mark as favorite'}
-          aria-label={isFavorite ? 'Remove from favorites' : 'Mark as favorite'}
+        <span
+          className="font-cinzel text-sm font-semibold flex-1 min-w-0 truncate"
+          style={{ color: 'var(--adnd-gold-light)' }}
         >
-          <Star size={13} fill={isFavorite ? '#e6c35a' : 'none'} />
-        </button>
+          {spell.name}
+        </span>
+
+        <span
+          className="font-cinzel text-[8px] uppercase tracking-wide px-1.5 py-0.5 rounded-sm shrink-0"
+          style={schoolBadgeStyle(spell.school)}
+        >
+          {spell.school}
+        </span>
+
+        <span
+          className="font-cinzel text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded-sm shrink-0"
+          style={{ background: 'rgba(201,162,39,0.15)', color: 'var(--adnd-gold)', border: '1px solid var(--adnd-gold-dim)' }}
+        >
+          Lvl {spell.level}
+        </span>
+
+        {/* Star / favorite button */}
         <button
-          className="shrink-0 ml-1 mt-0.5 p-1 rounded hover:bg-[#3a1a1a] transition-colors"
-          style={{ color: '#7a5050' }}
-          onClick={e => { e.stopPropagation(); if (confirm(`Remove ${spell.name}?`)) onRemove(); }}
+          className="shrink-0 w-7 h-7 flex items-center justify-center rounded transition-colors hover:bg-white/10"
+          title={isFavorite ? 'Remove from favorites' : 'Mark as favorite'}
+          onClick={handleStar}
+          aria-label={isFavorite ? 'Unfavorite' : 'Favorite'}
+        >
+          <span className="text-base leading-none" style={{ color: isFavorite ? '#c9a227' : 'var(--adnd-gold-dim)' }}>
+            {isFavorite ? '★' : '☆'}
+          </span>
+        </button>
+
+        {/* Trash button */}
+        <button
+          className="shrink-0 w-7 h-7 flex items-center justify-center rounded transition-colors hover:bg-red-900/40"
           title="Remove spell"
-        ><Trash2 size={12} /></button>
+          onClick={handleRemove}
+          aria-label="Remove spell"
+        >
+          <span className="text-sm" style={{ color: '#cc6666' }}>🗑</span>
+        </button>
       </div>
 
+      {/* Expanded details */}
       {open && (
-        <div className="px-4 pb-3 pt-1" style={{ background: '#141726', borderTop: '1px solid #2a3048' }}>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-2 text-[10px]" style={{ color: '#8090a8' }}>
-            <div><span style={{ color: '#c9a227' }}>Components:</span> {spell.components}</div>
-            <div><span style={{ color: '#c9a227' }}>Area:</span> {spell.areaOfEffect}</div>
-            <div><span style={{ color: '#c9a227' }}>Duration:</span> {spell.duration}</div>
-            <div><span style={{ color: '#c9a227' }}>Save:</span> {spell.savingThrow}</div>
+        <div
+          className="px-4 pb-4 text-[11px] space-y-3"
+          style={{ color: '#c8cfe8', borderTop: '1px solid var(--adnd-gold-dim)' }}
+        >
+          <p className="font-handwriting text-[12px] leading-relaxed pt-3" style={{ color: 'var(--adnd-gold-light)' }}>
+            {spell.summary}
+          </p>
+
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+            {[
+              ['Sphere', spell.sphere],
+              ['Range', spell.range],
+              ['Duration', spell.duration],
+              ['Casting Time', spell.castingTime],
+              ['Area of Effect', spell.areaOfEffect],
+              ['Components', spell.components],
+              ['Saving Throw', spell.savingThrow],
+            ].filter(([, v]) => v).map(([label, value]) => (
+              <div key={label} className="flex gap-1.5">
+                <span className="font-cinzel text-[9px] uppercase tracking-wide shrink-0" style={{ color: 'var(--adnd-gold-dim)' }}>
+                  {label}:
+                </span>
+                <span className="font-handwriting">{value}</span>
+              </div>
+            ))}
           </div>
-          <p className="text-[11px] leading-relaxed whitespace-pre-line" style={{ color: '#c0cfe0' }}>{spell.description}</p>
+
+          <p className="font-handwriting text-[11px] leading-relaxed border-t pt-2" style={{ borderColor: 'var(--adnd-gold-dim)', color: '#a8b4cc' }}>
+            {spell.description}
+          </p>
         </div>
       )}
     </div>
-  );
-}
-
-function StatPill({ label, value }: { label: string; value: string }) {
-  return (
-    <span className="text-[9px]" style={{ color: '#7a8aaa' }}>
-      <span style={{ color: '#9aabbc' }}>{label}:</span> {value}
-    </span>
   );
 }
 
@@ -130,91 +166,74 @@ export function MagicTab({ knownSpellIds, favoriteSpellIds, addKnownSpell, remov
     <>
       <div className="flex flex-col gap-4">
         <SheetCard
-          title="Spell List"
+          title="Known Spells"
           headerExtra={
-            <div className="ml-auto flex items-center gap-1.5">
-              {/* Favorites filter */}
+            <div className="flex items-center gap-2 ml-auto">
+              {/* Favorites filter — only shown when there are known spells */}
               {knownSpells.length > 0 && (
                 <button
-                  className="flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-cinzel uppercase tracking-wide border transition-all hover:brightness-110"
-                  style={showFavoritesOnly
-                    ? { background: '#3a2a00', color: '#e6c35a', border: '1px solid var(--adnd-gold)' }
-                    : { background: 'var(--adnd-dark)', color: '#8090a8', border: '1px solid #3a4060' }
+                  className="flex items-center gap-1.5 font-cinzel text-[9px] uppercase tracking-wide px-2.5 py-1 rounded-full border transition-all"
+                  style={
+                    showFavoritesOnly
+                      ? { background: 'rgba(201,162,39,0.2)', color: 'var(--adnd-gold)', border: '1px solid var(--adnd-gold)' }
+                      : { background: 'transparent', color: 'var(--adnd-gold-dim)', border: '1px solid var(--adnd-gold-dim)' }
                   }
                   onClick={() => setShowFavoritesOnly(v => !v)}
-                  title={showFavoritesOnly ? 'Show all spells' : 'Show favorites only'}
+                  title="Show favorites only"
                 >
-                  <Star size={10} fill={showFavoritesOnly ? '#e6c35a' : 'none'} />
-                  {showFavoritesOnly ? 'Favorites' : 'Favorites'}
-                  {favoriteCount > 0 && (
-                    <span
-                      className="px-1 rounded-full text-[8px]"
-                      style={{
-                        background: showFavoritesOnly ? '#e6c35a33' : '#3a4060',
-                        color: showFavoritesOnly ? '#e6c35a' : '#7a8aaa',
-                      }}
-                    >
-                      {favoriteCount}
-                    </span>
+                  <span className="text-sm leading-none">{showFavoritesOnly ? '★' : '☆'}</span>
+                  {showFavoritesOnly && favoriteCount > 0 && (
+                    <span>{favoriteCount}</span>
                   )}
                 </button>
               )}
+
+              {/* Add Spell button */}
               <button
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-cinzel uppercase tracking-wide border transition-all hover:brightness-110"
-                style={{ background: 'var(--adnd-dark)', color: '#e6c35a', border: '1px solid var(--adnd-gold-dim)' }}
+                className="font-cinzel text-[9px] uppercase tracking-wide px-2.5 py-1 rounded border transition-colors hover:bg-white/10"
+                style={{ color: 'var(--adnd-gold-light)', border: '1px solid var(--adnd-gold-dim)' }}
                 onClick={() => setSpellBookOpen(true)}
               >
-                <Plus size={10} />
-                Add Spell
+                + Add Spell
               </button>
             </div>
           }
         >
           {knownSpells.length === 0 ? (
-            <div
-              className="flex flex-col items-center gap-3 py-10 text-center rounded-lg"
-              style={{ border: '1px dashed #2a3048' }}
-            >
-              <BookOpen size={32} style={{ color: '#3a4060' }} />
-              <div>
-                <p className="font-cinzel text-[11px] uppercase tracking-wide" style={{ color: '#5a6a80' }}>
-                  No spells memorized
-                </p>
-                <p className="text-[10px] mt-1" style={{ color: '#3a4a60' }}>
-                  Open the Spell Book to add spells to your list.
-                </p>
-              </div>
+            /* Empty state — no known spells */
+            <div className="flex flex-col items-center justify-center gap-3 py-10 px-4 text-center">
+              <span className="text-4xl">📖</span>
+              <p className="font-cinzel text-xs uppercase tracking-wide" style={{ color: 'var(--adnd-gold-dim)' }}>
+                No spells in your list
+              </p>
               <button
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-cinzel uppercase tracking-wide border transition-all hover:brightness-110"
-                style={{ background: 'var(--adnd-dark3)', color: '#e6c35a', border: '1px solid var(--adnd-gold-dim)' }}
+                className="font-cinzel text-xs uppercase tracking-wide px-4 py-2 rounded border transition-colors hover:bg-white/10"
+                style={{ color: 'var(--adnd-gold-light)', border: '1px solid var(--adnd-gold-dim)' }}
                 onClick={() => setSpellBookOpen(true)}
               >
-                <BookOpen size={12} />
                 Open Spell Book
               </button>
             </div>
-          ) : displayedSpells.length === 0 ? (
-            <div
-              className="flex flex-col items-center gap-2 py-8 text-center rounded-lg"
-              style={{ border: '1px dashed #2a3048' }}
-            >
-              <Star size={24} style={{ color: '#3a4060' }} />
-              <p className="font-cinzel text-[11px] uppercase tracking-wide" style={{ color: '#5a6a80' }}>
-                No favorite spells
+          ) : showFavoritesOnly && displayedSpells.length === 0 ? (
+            /* Empty state — favorites filter active but no favorites */
+            <div className="flex flex-col items-center justify-center gap-3 py-10 px-4 text-center">
+              <span className="text-4xl">⭐</span>
+              <p className="font-cinzel text-xs uppercase tracking-wide" style={{ color: 'var(--adnd-gold-dim)' }}>
+                No favorites yet
               </p>
-              <p className="text-[10px]" style={{ color: '#3a4a60' }}>
-                Star spells in your list to mark them as favorites.
+              <p className="font-handwriting text-[11px]" style={{ color: '#8a9ab8' }}>
+                Star spells in your list to mark them as favorites
               </p>
             </div>
           ) : (
-            <div>
+            <div className="pt-1">
               {displayedSpells.map(spell => (
                 <KnownSpellCard
                   key={spell.id}
                   spell={spell}
                   isFavorite={favoriteSpellIds.includes(spell.id)}
-                  onRemove={() => removeKnownSpell(spell.id)}
                   onToggleFavorite={() => toggleFavoriteSpell(spell.id)}
+                  onRemove={() => removeKnownSpell(spell.id)}
                 />
               ))}
             </div>
@@ -222,6 +241,7 @@ export function MagicTab({ knownSpellIds, favoriteSpellIds, addKnownSpell, remov
         </SheetCard>
       </div>
 
+      {/* Spell Book modal */}
       {spellBookOpen && (
         <SpellBook
           knownSpellIds={knownSpellIds}
