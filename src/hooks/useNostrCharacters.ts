@@ -172,7 +172,7 @@ export function useNostrCharacters() {
 
       return charId;
     },
-    onSuccess: (_, { char }) => {
+    onSuccess: () => {
       // Optimistically update the query cache so the drawer refreshes immediately
       queryClient.invalidateQueries({ queryKey: ['nostr-char-index', user?.pubkey] });
     },

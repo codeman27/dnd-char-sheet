@@ -1,0 +1,9 @@
+{
+  "name": "AD&D 2e Character Sheet",
+  "short_name": "AD&D 2e",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1323",
+  "theme_color": "#1b2340",
+  "icons": []
+}

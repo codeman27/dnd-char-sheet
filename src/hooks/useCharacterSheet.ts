@@ -617,7 +617,6 @@ export function useCharacterSheet() {
           } else {
             // New React format: top-level fields match CharacterData
             // Strip the version key before merging
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { version: _v, ...fields } = parsed as { version?: number } & Partial<CharacterData>;
             loaded = { ...defaultCharacter, ...fields };
           }

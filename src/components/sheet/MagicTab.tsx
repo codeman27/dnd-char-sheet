@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { SheetCard } from './SheetCard';
 import { SpellBook } from './SpellBook';
 import { getSpellById } from '@/lib/spellData';
@@ -151,14 +151,22 @@ function KnownSpellCard({ spell, isFavorite, onToggleFavorite, onRemove }: Known
 export function MagicTab({ knownSpellIds, favoriteSpellIds, addKnownSpell, removeKnownSpell, toggleFavoriteSpell }: Props) {
   const [spellBookOpen, setSpellBookOpen] = useState(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [levelFilter, setLevelFilter] = useState<number | null>(null);
 
   const knownSpells = knownSpellIds
     .map(id => getSpellById(id))
     .filter((s): s is SpellData => s !== undefined);
 
-  const displayedSpells = showFavoritesOnly
-    ? knownSpells.filter(s => favoriteSpellIds.includes(s.id))
-    : knownSpells;
+  const availableLevels = useMemo(() => {
+    const set = new Set(knownSpells.map(s => s.level));
+    return Array.from(set).sort((a, b) => a - b);
+  }, [knownSpells]);
+
+  const displayedSpells = knownSpells.filter(s => {
+    if (showFavoritesOnly && !favoriteSpellIds.includes(s.id)) return false;
+    if (levelFilter !== null && s.level !== levelFilter) return false;
+    return true;
+  });
 
   const favoriteCount = knownSpells.filter(s => favoriteSpellIds.includes(s.id)).length;
 
@@ -199,6 +207,40 @@ export function MagicTab({ knownSpellIds, favoriteSpellIds, addKnownSpell, remov
             </div>
           }
         >
+          {/* Level filter pills — only shown when spells span more than one level */}
+          {knownSpells.length > 0 && availableLevels.length > 1 && (
+            <div
+              className="flex gap-1.5 flex-wrap px-3 pt-2 pb-1"
+              style={{ borderBottom: '1px solid var(--adnd-gold-dim)' }}
+            >
+              <button
+                className="font-cinzel text-[9px] uppercase tracking-wide px-2 py-1 rounded-full border transition-colors"
+                style={
+                  levelFilter === null
+                    ? { background: 'var(--adnd-gold)', color: '#1a1d2e', border: '1px solid var(--adnd-gold)' }
+                    : { background: 'transparent', color: 'var(--adnd-gold-dim)', border: '1px solid var(--adnd-gold-dim)' }
+                }
+                onClick={() => setLevelFilter(null)}
+              >
+                All
+              </button>
+              {availableLevels.map(lvl => (
+                <button
+                  key={lvl}
+                  className="font-cinzel text-[9px] uppercase tracking-wide px-2 py-1 rounded-full border transition-colors"
+                  style={
+                    levelFilter === lvl
+                      ? { background: 'var(--adnd-gold)', color: '#1a1d2e', border: '1px solid var(--adnd-gold)' }
+                      : { background: 'transparent', color: 'var(--adnd-gold-dim)', border: '1px solid var(--adnd-gold-dim)' }
+                  }
+                  onClick={() => setLevelFilter(lvl)}
+                >
+                  Lvl {lvl}
+                </button>
+              ))}
+            </div>
+          )}
+
           {knownSpells.length === 0 ? (
             /* Empty state — no known spells */
             <div className="flex flex-col items-center justify-center gap-3 py-10 px-4 text-center">
@@ -214,16 +256,18 @@ export function MagicTab({ knownSpellIds, favoriteSpellIds, addKnownSpell, remov
                 Open Spell Book
               </button>
             </div>
-          ) : showFavoritesOnly && displayedSpells.length === 0 ? (
-            /* Empty state — favorites filter active but no favorites */
+          ) : displayedSpells.length === 0 ? (
+            /* Empty state — active filters produced no results */
             <div className="flex flex-col items-center justify-center gap-3 py-10 px-4 text-center">
-              <span className="text-4xl">⭐</span>
+              <span className="text-4xl">{showFavoritesOnly ? '⭐' : '🔍'}</span>
               <p className="font-cinzel text-xs uppercase tracking-wide" style={{ color: 'var(--adnd-gold-dim)' }}>
-                No favorites yet
+                {showFavoritesOnly ? 'No favorites yet' : `No level ${levelFilter} spells in your list`}
               </p>
-              <p className="font-handwriting text-[11px]" style={{ color: '#8a9ab8' }}>
-                Star spells in your list to mark them as favorites
-              </p>
+              {showFavoritesOnly && (
+                <p className="font-handwriting text-[11px]" style={{ color: '#8a9ab8' }}>
+                  Star spells in your list to mark them as favorites
+                </p>
+              )}
             </div>
           ) : (
             <div className="pt-1">

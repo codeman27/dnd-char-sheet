@@ -56,7 +56,6 @@ export function CharacterSheet() {
     updateGear,
     updateProficiency,
     updateSpecialAbility,
-    updateSpell,
     addKnownSpell,
     removeKnownSpell,
     toggleFavoriteSpell,
